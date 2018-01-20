@@ -10,7 +10,7 @@ using namespace std;
 #define HEIGHT 720
 #define BREADTH 1280
 #define SNAKE 20
-int framerate=10;
+float framerate=10;
 int board[HEIGHT/SNAKE][BREADTH/SNAKE];
 int shaderProgram;
 unsigned int vboSnake[HEIGHT/SNAKE][BREADTH/SNAKE], vaoSnake[HEIGHT/SNAKE][BREADTH/SNAKE], eboSnake[HEIGHT/SNAKE][BREADTH/SNAKE];
@@ -51,7 +51,10 @@ void gameOver(GLFWwindow *window)
 				}
 			}
 		}
+		glfwSwapBuffers(window);
+		glfwPollEvents();
 	}
+
 	glfwSetWindowShouldClose(window,true);
 }
 void generateCoinNormal(int &coinX,int &coinY)
@@ -244,7 +247,7 @@ int main()
 		{
 			case 0:
 				nextX=xVal.back();
-				nextY=(yVal.back()-1)%(HEIGHT/SNAKE);
+				nextY=(yVal.back()-1);
 				//cout<<nextX<<" "<<nextY<<endl;
 				if(nextY==-1)
 				{
@@ -260,7 +263,7 @@ int main()
 				nextY=(yVal.back()+1)%(HEIGHT/SNAKE);
 				break;
 			case 3:
-				nextX=(xVal.back()-1)%(BREADTH/SNAKE);
+				nextX=(xVal.back()-1);
 				nextY=yVal.back();
 				if(nextX==-1)
 				{
@@ -268,8 +271,10 @@ int main()
 				}
 				break;
 		}
+		cout<<nextX<<" "<<nextY<<endl;
 		if(board[nextY][nextX]==1)
 		{
+			cout<<"Game Over\n";
 			gameOver(window);
 		}
 		//updating board and queue
@@ -289,7 +294,8 @@ int main()
 		if(coinX==nextX && coinY==nextY)
 		{
 			score++;
-			cout<<score<<endl;
+			framerate+=(0.2);
+			cout<<"score="<<score<<endl;
 			generateCoinNormal(coinX,coinY);
 			flag=1;
 		}
@@ -310,19 +316,19 @@ int main()
 		glBindVertexArray(vaoSnake[coinY][coinX]);
 		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
 		glfwSwapBuffers(window);
-		if(glfwGetKey(window,GLFW_KEY_UP)==GLFW_PRESS)
+		if(glfwGetKey(window,GLFW_KEY_UP)==GLFW_PRESS && (state==3 || state==1))
 		{
 			state=0;
 		}
-		else if(glfwGetKey(window,GLFW_KEY_RIGHT)==GLFW_PRESS)
+		else if(glfwGetKey(window,GLFW_KEY_RIGHT)==GLFW_PRESS && (state==0 || state==2))
 		{
 			state=1;
 		}
-		else if(glfwGetKey(window,GLFW_KEY_DOWN)==GLFW_PRESS)
+		else if(glfwGetKey(window,GLFW_KEY_DOWN)==GLFW_PRESS && (state==1 || state==3))
 		{
 			state=2;
 		}
-		else if(glfwGetKey(window,GLFW_KEY_LEFT)==GLFW_PRESS)
+		else if(glfwGetKey(window,GLFW_KEY_LEFT)==GLFW_PRESS && (state==0 || state==2))
 		{
 			state=3;
 		}
