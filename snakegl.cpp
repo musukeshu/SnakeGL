@@ -1,0 +1,268 @@
+#include<glad/glad.h>
+#include<GLFW/glfw3.h>
+//This library is for the sleep command
+#include<unistd.h> 
+#include<bits/stdc++.h>
+//This library is for the delay command
+#include<time.h>
+using namespace std;
+//this function includes delay command in program
+#define HEIGHT 360
+#define BREADTH 640
+#define SNAKE 10
+void delay(float secs)
+{
+	float end = clock()/CLOCKS_PER_SEC + secs;
+	while((clock()/CLOCKS_PER_SEC) < end);
+}
+void framebuffer_size_callback(GLFWwindow* window,int width,int height)
+{
+	glViewport(0,0,width,height);
+}
+//this function detects keyboard input
+void processInput(GLFWwindow *window)
+{
+	if(glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS)
+	{
+		glfwSetWindowShouldClose(window,true);
+	}
+}
+const char *vertexShaderSource = "#version 330 core\n"
+    "layout (location = 0) in vec3 aPos;\n"
+    "void main()\n"
+    "{\n"
+    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "}\0";
+const char *fragmentShaderSource = "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
+    "}\n\0";
+int main()
+{
+	int i,j;
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE,GLFW_OPENGL_CORE_PROFILE);
+	GLFWwindow* window=glfwCreateWindow(800,600,"window",NULL,NULL);
+	if(window==NULL)
+	{
+		cout<<"Failed to create GLFW window"<<endl;
+		glfwTerminate();
+		return -1;
+	}
+	glfwMakeContextCurrent(window);
+	if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		cout<<"Failed to initialize GLAD"<<endl;
+		return -1;
+	}
+	glViewport(0,0,800,800);
+	glfwSetFramebufferSizeCallback(window,framebuffer_size_callback);
+	//Shaders
+	int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+    
+    int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+	int shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) 
+    {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+	glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+	
+	unsigned int vboSnake[HEIGHT/SNAKE][BREADTH/SNAKE], vaoSnake[HEIGHT/SNAKE][BREADTH/SNAKE], eboSnake[HEIGHT/SNAKE][BREADTH/SNAKE];
+   	glGenBuffers((HEIGHT/SNAKE)*(BREADTH/SNAKE), &eboSnake[0][0]);	
+    glGenVertexArrays((HEIGHT/SNAKE)*(BREADTH/SNAKE), &vaoSnake[0][0]);	
+    glGenBuffers((HEIGHT/SNAKE)*(BREADTH/SNAKE), &vboSnake[0][0]);	
+    unsigned int indices[]=
+    {
+    	0,1,3,
+    	1,2,3
+    };
+    float x=(1.0/((BREADTH/SNAKE)/2.0)),y=(1.0/((HEIGHT/SNAKE)/2.0));
+    cout<<x<<" "<<y<<endl;
+    for(i=0;i<HEIGHT/SNAKE;i++)
+	{
+		for(j=0;j<BREADTH/SNAKE;j++)
+		{
+			float vertices[]=
+			{
+				(-1+(x*j)),(1-(y*i)),0.0,
+				(-1+(x*j)+x),(1-(y*i)),0.0,
+				(-1+(x*j)+x),(1-(y*i)-y),0.0,
+				(-1+(x*j)),(1-(y*i)-y),0.0
+			};
+
+			glBindVertexArray(vaoSnake[i][j]);
+			
+			glBindBuffer(GL_ARRAY_BUFFER,vboSnake[i][j]);
+			glBufferData(GL_ARRAY_BUFFER,sizeof(vertices),vertices,GL_STATIC_DRAW);
+
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,eboSnake[i][j]);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(indices),indices,GL_STATIC_DRAW);
+
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    		glEnableVertexAttribArray(0);
+
+    		glBindBuffer(GL_ARRAY_BUFFER, 0); 
+    		glBindVertexArray(0); 
+		}
+	}
+    	
+	int board[HEIGHT/SNAKE][BREADTH/SNAKE],nextX,nextY;
+	queue <int> xVal,yVal;
+	
+	for(i=0;i<(HEIGHT/SNAKE);i++)
+	{
+		for(j=0;j<(BREADTH/SNAKE);j++)
+		{
+			board[i][j]=0;
+		}
+	}
+	board[(HEIGHT/SNAKE)/2][(BREADTH/SNAKE)/2]=1;
+	xVal.push((BREADTH/SNAKE)/2);
+	yVal.push((HEIGHT/SNAKE)/2);
+
+	int initState=1;
+	int state=initState;
+	float lastTime=glfwGetTime();
+	int framerate=30;
+	while(1)
+	{
+		coinX=rand()%(BREADTH/snake);
+		coinY=rand()%(HEIGHT/snake);
+		if(board[coinY][coinX]==1)
+		{
+			continue;
+		}
+		else
+		{
+			break;
+		}
+	}
+	while(!glfwWindowShouldClose(window))
+	{
+		while(1)
+		{
+			float currentTime=glfwGetTime();
+			if(currentTime-lastTime>=(1.0)/framerate)
+			{
+				lastTime=currentTime;
+				break;
+			}
+		}
+		processInput(window);
+		glClearColor(0.2f,0.3f,0.3f,1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		//Moving the snake
+		switch(state)
+		{
+			case 0:
+				nextX=xVal.back();
+				nextY=(yVal.back()-1)%(HEIGHT/SNAKE);
+				//cout<<nextX<<" "<<nextY<<endl;
+				if(nextY==-1)
+				{
+					nextY=(HEIGHT/SNAKE)-1;
+				}
+				break;
+			case 1:
+				nextX=(xVal.back()+1)%(BREADTH/SNAKE);
+				nextY=yVal.back();
+				break;
+			case 2:
+				nextX=xVal.back();
+				nextY=(yVal.back()+1)%(HEIGHT/SNAKE);
+				break;
+			case 3:
+				nextX=(xVal.back()-1)%(BREADTH/SNAKE);
+				nextY=yVal.back();
+				if(nextX==-1)
+				{
+					nextX=(BREADTH/SNAKE)-1;
+				}
+				break;
+		}
+		/*if(board[nextX][nextY]==1)
+		{
+			gameOver();
+		}*/
+		/*if(coinX==nextX && coinY==nextY)
+		{
+			score++;
+		}*/
+		//updating board
+		board[nextY][nextX]=1;
+		board[yVal.front()][xVal.front()]=0;
+		//updating queue
+		xVal.pop();
+		yVal.pop();
+		xVal.push(nextX);
+		yVal.push(nextY);
+		//rendering
+		for(i=0;i<HEIGHT/SNAKE;i++)
+		{
+			for(j=0;j<BREADTH/SNAKE;j++)
+			{
+				if(board[i][j]==1)
+				{
+					glUseProgram(shaderProgram);
+					glBindVertexArray(vaoSnake[i][j]);
+					glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
+				}
+			}
+		}
+		glfwSwapBuffers(window);
+		if(glfwGetKey(window,GLFW_KEY_UP)==GLFW_PRESS)
+		{
+			state=0;
+		}
+		else if(glfwGetKey(window,GLFW_KEY_RIGHT)==GLFW_PRESS)
+		{
+			state=1;
+		}
+		else if(glfwGetKey(window,GLFW_KEY_DOWN)==GLFW_PRESS)
+		{
+			state=2;
+		}
+		else if(glfwGetKey(window,GLFW_KEY_LEFT)==GLFW_PRESS)
+		{
+			state=3;
+		}
+		glfwPollEvents();
+		
+		
+	}
+	glDeleteVertexArrays(1, &vaoSnake[0][0]);
+    glDeleteBuffers(1, &vboSnake[0][0]);
+    glDeleteBuffers(1, &eboSnake[0][0]);
+    
+	glfwTerminate();
+	return 0;
+}
