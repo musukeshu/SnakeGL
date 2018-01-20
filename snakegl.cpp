@@ -7,9 +7,13 @@
 #include<time.h>
 using namespace std;
 //this function includes delay command in program
-#define HEIGHT 360
-#define BREADTH 640
-#define SNAKE 10
+#define HEIGHT 720
+#define BREADTH 1280
+#define SNAKE 20
+int framerate=10;
+int board[HEIGHT/SNAKE][BREADTH/SNAKE];
+int shaderProgram;
+unsigned int vboSnake[HEIGHT/SNAKE][BREADTH/SNAKE], vaoSnake[HEIGHT/SNAKE][BREADTH/SNAKE], eboSnake[HEIGHT/SNAKE][BREADTH/SNAKE];
 void delay(float secs)
 {
 	float end = clock()/CLOCKS_PER_SEC + secs;
@@ -27,6 +31,45 @@ void processInput(GLFWwindow *window)
 		glfwSetWindowShouldClose(window,true);
 	}
 }
+void gameOver(GLFWwindow *window)
+{
+	int i,j;
+	while(!glfwWindowShouldClose(window))
+	{
+		processInput(window);
+		glClearColor(0.2f,0.3f,0.3f,1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		for(i=0;i<HEIGHT/SNAKE;i++)
+		{
+			for(j=0;j<BREADTH/SNAKE;j++)
+			{
+				if(board[i][j]==1)
+				{
+					glUseProgram(shaderProgram);
+					glBindVertexArray(vaoSnake[i][j]);
+					glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
+				}
+			}
+		}
+	}
+	glfwSetWindowShouldClose(window,true);
+}
+void generateCoinNormal(int &coinX,int &coinY)
+{
+	while(1)
+	{
+		coinX=rand()%(BREADTH/SNAKE);
+		coinY=rand()%(HEIGHT/SNAKE);
+		if(board[coinY][coinX]==1)
+		{
+			continue;
+		}
+		else
+		{
+			break;
+		}
+	}
+}
 const char *vertexShaderSource = "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;\n"
     "void main()\n"
@@ -38,6 +81,12 @@ const char *fragmentShaderSource = "#version 330 core\n"
     "void main()\n"
     "{\n"
     "   FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
+    "}\n\0";
+const char *coinShaderSource = "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
     "}\n\0";
 int main()
 {
@@ -83,7 +132,17 @@ int main()
         glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
         std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
-	int shaderProgram = glCreateProgram();
+
+    int coinShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(coinShader, 1, &coinShaderSource, NULL);
+    glCompileShader(coinShader);
+    glGetShaderiv(coinShader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(coinShader, 512, NULL, infoLog);
+        std::cout << "ERROR::COIN::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+	shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
@@ -93,10 +152,20 @@ int main()
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
         std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
     }
+    int coinShaderProgram=glCreateProgram();
+	glAttachShader(coinShaderProgram, vertexShader);
+	glAttachShader(coinShaderProgram, coinShader);
+    glLinkProgram(coinShaderProgram);
+   	glGetProgramiv(coinShaderProgram, GL_LINK_STATUS, &success);
+    if (!success) 
+    {
+        glGetProgramInfoLog(coinShaderProgram, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
 	glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 	
-	unsigned int vboSnake[HEIGHT/SNAKE][BREADTH/SNAKE], vaoSnake[HEIGHT/SNAKE][BREADTH/SNAKE], eboSnake[HEIGHT/SNAKE][BREADTH/SNAKE];
+	
    	glGenBuffers((HEIGHT/SNAKE)*(BREADTH/SNAKE), &eboSnake[0][0]);	
     glGenVertexArrays((HEIGHT/SNAKE)*(BREADTH/SNAKE), &vaoSnake[0][0]);	
     glGenBuffers((HEIGHT/SNAKE)*(BREADTH/SNAKE), &vboSnake[0][0]);	
@@ -135,7 +204,7 @@ int main()
 		}
 	}
     	
-	int board[HEIGHT/SNAKE][BREADTH/SNAKE],nextX,nextY;
+	int nextX,nextY;
 	queue <int> xVal,yVal;
 	
 	for(i=0;i<(HEIGHT/SNAKE);i++)
@@ -152,20 +221,9 @@ int main()
 	int initState=1;
 	int state=initState;
 	float lastTime=glfwGetTime();
-	int framerate=30;
-	while(1)
-	{
-		coinX=rand()%(BREADTH/snake);
-		coinY=rand()%(HEIGHT/snake);
-		if(board[coinY][coinX]==1)
-		{
-			continue;
-		}
-		else
-		{
-			break;
-		}
-	}
+	
+	int coinX,coinY,flag=0,score=0;
+	generateCoinNormal(coinX,coinY);
 	while(!glfwWindowShouldClose(window))
 	{
 		while(1)
@@ -180,6 +238,7 @@ int main()
 		processInput(window);
 		glClearColor(0.2f,0.3f,0.3f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+		
 		//Moving the snake
 		switch(state)
 		{
@@ -209,22 +268,31 @@ int main()
 				}
 				break;
 		}
-		/*if(board[nextX][nextY]==1)
+		if(board[nextY][nextX]==1)
 		{
-			gameOver();
-		}*/
-		/*if(coinX==nextX && coinY==nextY)
-		{
-			score++;
-		}*/
-		//updating board
+			gameOver(window);
+		}
+		//updating board and queue
 		board[nextY][nextX]=1;
-		board[yVal.front()][xVal.front()]=0;
-		//updating queue
-		xVal.pop();
-		yVal.pop();
+		if(!flag)
+		{
+			board[yVal.front()][xVal.front()]=0;
+			xVal.pop();
+			yVal.pop();
+		}
+		else
+		{
+			flag=0;
+		}
 		xVal.push(nextX);
 		yVal.push(nextY);
+		if(coinX==nextX && coinY==nextY)
+		{
+			score++;
+			cout<<score<<endl;
+			generateCoinNormal(coinX,coinY);
+			flag=1;
+		}
 		//rendering
 		for(i=0;i<HEIGHT/SNAKE;i++)
 		{
@@ -238,6 +306,9 @@ int main()
 				}
 			}
 		}
+		glUseProgram(coinShaderProgram);
+		glBindVertexArray(vaoSnake[coinY][coinX]);
+		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
 		glfwSwapBuffers(window);
 		if(glfwGetKey(window,GLFW_KEY_UP)==GLFW_PRESS)
 		{
