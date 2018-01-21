@@ -12,9 +12,6 @@ using namespace std;
 #define SNAKE 20
 queue <int> state;
 int initState=1;
-
-
-
 int curr_state=state.front();
 float framerate=15;
 int board[HEIGHT/SNAKE][BREADTH/SNAKE];
@@ -25,7 +22,6 @@ void delay(float secs)
 	float end = clock()/CLOCKS_PER_SEC + secs;
 	while((clock()/CLOCKS_PER_SEC) < end);
 }
-
 void framebuffer_size_callback(GLFWwindow* window,int width,int height)
 {
 	glViewport(0,0,width,height);
@@ -47,8 +43,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         activate_airship(3);
 
 }
-
-
 //this function detects keyboard input
 void processInput(GLFWwindow *window)
 {
@@ -217,26 +211,19 @@ int main()
 				(-1+(x*j)+x),(1-(y*i)-y),0.0,
 				(-1+(x*j)),(1-(y*i)-y),0.0
 			};
-
 			glBindVertexArray(vaoSnake[i][j]);
-			
 			glBindBuffer(GL_ARRAY_BUFFER,vboSnake[i][j]);
 			glBufferData(GL_ARRAY_BUFFER,sizeof(vertices),vertices,GL_STATIC_DRAW);
-
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,eboSnake[i][j]);
 			glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(indices),indices,GL_STATIC_DRAW);
-
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     		glEnableVertexAttribArray(0);
-
-    		glBindBuffer(GL_ARRAY_BUFFER, 0); 
+			glBindBuffer(GL_ARRAY_BUFFER, 0); 
     		glBindVertexArray(0); 
 		}
 	}
-    	
-	int nextX,nextY;
+    int nextX,nextY;
 	queue <int> xVal,yVal;
-	
 	for(i=0;i<(HEIGHT/SNAKE);i++)
 	{
 		for(j=0;j<(BREADTH/SNAKE);j++)
@@ -247,10 +234,8 @@ int main()
 	board[(HEIGHT/SNAKE)/2][(BREADTH/SNAKE)/2]=1;
 	xVal.push((BREADTH/SNAKE)/2);
 	yVal.push((HEIGHT/SNAKE)/2);
-
 	glfwSetKeyCallback(window, key_callback);
 	float lastTime=glfwGetTime();
-	
 	int coinX,coinY,flag=0,score=0;
 	generateCoinNormal(coinX,coinY);
 	while(!glfwWindowShouldClose(window))
@@ -267,7 +252,6 @@ int main()
 		processInput(window);
 		glClearColor(0.2f,0.3f,0.3f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		
 		//Moving the snake
 		if(state.empty()==0)
 		{
@@ -347,15 +331,11 @@ int main()
 		glBindVertexArray(vaoSnake[coinY][coinX]);
 		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
 		glfwSwapBuffers(window);
-		
 		glfwPollEvents();
-		
-		
 	}
 	glDeleteVertexArrays(1, &vaoSnake[0][0]);
     glDeleteBuffers(1, &vboSnake[0][0]);
     glDeleteBuffers(1, &eboSnake[0][0]);
-    
-	glfwTerminate();
+    glfwTerminate();
 	return 0;
 }
