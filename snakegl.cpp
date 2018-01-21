@@ -10,7 +10,9 @@ using namespace std;
 #define HEIGHT 720
 #define BREADTH 1280
 #define SNAKE 20
-float framerate=10;
+int initState=1;
+int state=initState;
+float framerate=20;
 int board[HEIGHT/SNAKE][BREADTH/SNAKE];
 int shaderProgram;
 unsigned int vboSnake[HEIGHT/SNAKE][BREADTH/SNAKE], vaoSnake[HEIGHT/SNAKE][BREADTH/SNAKE], eboSnake[HEIGHT/SNAKE][BREADTH/SNAKE];
@@ -19,10 +21,28 @@ void delay(float secs)
 	float end = clock()/CLOCKS_PER_SEC + secs;
 	while((clock()/CLOCKS_PER_SEC) < end);
 }
+
 void framebuffer_size_callback(GLFWwindow* window,int width,int height)
 {
 	glViewport(0,0,width,height);
 }
+void activate_airship(int s)
+{
+	state=s;
+}
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_UP && action == GLFW_PRESS)
+        activate_airship(0);
+    else if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+        activate_airship(1);
+    else if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
+        activate_airship(2);
+    else if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+        activate_airship(3);
+}
+
+
 //this function detects keyboard input
 void processInput(GLFWwindow *window)
 {
@@ -221,14 +241,14 @@ int main()
 	xVal.push((BREADTH/SNAKE)/2);
 	yVal.push((HEIGHT/SNAKE)/2);
 
-	int initState=1;
-	int state=initState;
+	glfwSetKeyCallback(window, key_callback);
 	float lastTime=glfwGetTime();
 	
 	int coinX,coinY,flag=0,score=0;
 	generateCoinNormal(coinX,coinY);
 	while(!glfwWindowShouldClose(window))
 	{
+
 		while(1)
 		{
 			float currentTime=glfwGetTime();
@@ -316,22 +336,7 @@ int main()
 		glBindVertexArray(vaoSnake[coinY][coinX]);
 		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
 		glfwSwapBuffers(window);
-		if(glfwGetKey(window,GLFW_KEY_UP)==GLFW_PRESS && (state==3 || state==1))
-		{
-			state=0;
-		}
-		else if(glfwGetKey(window,GLFW_KEY_RIGHT)==GLFW_PRESS && (state==0 || state==2))
-		{
-			state=1;
-		}
-		else if(glfwGetKey(window,GLFW_KEY_DOWN)==GLFW_PRESS && (state==1 || state==3))
-		{
-			state=2;
-		}
-		else if(glfwGetKey(window,GLFW_KEY_LEFT)==GLFW_PRESS && (state==0 || state==2))
-		{
-			state=3;
-		}
+		
 		glfwPollEvents();
 		
 		
